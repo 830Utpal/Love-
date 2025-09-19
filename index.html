@@ -25,7 +25,7 @@
       100%{filter:hue-rotate(8deg)}
     }
 
-    /* Floating hearts canvas sits behind everything */
+    /* Floating hearts canvas */
     #floatLayer{position:fixed;inset:0;z-index:0;pointer-events:none}
 
     /* Soft love wall */
@@ -94,7 +94,7 @@
   <div class="confetti" id="confetti" aria-hidden="true"></div>
 
   <script>
-    // Utilities
+    // Helpers
     const $ = (sel, parent=document) => parent.querySelector(sel);
 
     // 1) Love wall
@@ -111,20 +111,21 @@
       }
     })();
 
-    // 2) Typewriter question
-    (function typeQuestion(){
+    // 2) Typewriter question (exposed as a function so we can restart on reset)
+    function typeQuestion(){
       const text = 'Will you marry me?';
+      const qEl = $('#q');
+      qEl.innerHTML = '<span id="typeTarget"></span><span class="type-caret" aria-hidden="true"></span>';
       const tgt = $('#typeTarget');
       let i=0;
-      const step = ()=>{
+      (function step(){
         if(i<=text.length){
-          tgt.textContent = text.slice(0,i);
-          i++;
+          tgt.textContent = text.slice(0,i++);
           setTimeout(step, i<6?80: i<12?85:95);
         }
-      };
-      step();
-    })();
+      })();
+    }
+    typeQuestion();
 
     // 3) Floating hearts (requestAnimationFrame)
     (function floatingHearts(){
@@ -181,12 +182,13 @@
       requestAnimationFrame(tick);
     })();
 
-    // 4) Buttons logic
+    // 4) Buttons and elements
     const center = document.querySelector('.center');
     const noBtn = $('#noBtn');
     const yesBtn = $('#yesBtn');
     const flower = $('#flower');
     const confetti = $('#confetti');
+    const hint = $('#hint');
 
     function moveNoRandom() {
       const rect = center.getBoundingClientRect();
@@ -229,7 +231,7 @@
       }
     }
 
-    // 6) Celebration chime with Web Audio API (no external file)
+    // 6) Celebration chime with Web Audio API
     async function ding(){
       try{
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -247,27 +249,45 @@
       }catch(e){}
     }
 
-    // 7) Persist acceptance
-    const KEY = 'riddhima-yes';
+    // 7) UI state helpers
     function setYesUI(){
       flower.classList.add('show');
       $('#q').textContent = 'Yes! She said YES! 💞';
       center.style.boxShadow = '0 18px 40px rgba(255,45,149,0.2)';
       noBtn.style.opacity = '0';
       noBtn.style.pointerEvents = 'none';
+      hint.textContent = 'Wishing a lifetime of happiness 💗';
       yesBtn.animate(
         [{transform:'scale(0.98)'},{transform:'scale(1.06)'},{transform:'scale(1)'}],
         {duration:560,iterations:1,easing:'ease-out'}
       );
-      $('#hint').textContent = 'Wishing a lifetime of happiness 💗';
     }
-    if(localStorage.getItem(KEY)==='1'){ setYesUI(); }
 
+    function resetUI(){
+      // Hide celebration and restore base styles/content
+      flower.classList.remove('show');
+      center.style.boxShadow = '0 12px 34px rgba(0,0,0,0.10)';
+      noBtn.style.opacity = '1';
+      noBtn.style.pointerEvents = 'auto';
+      noBtn.style.transform = 'translate(0, 0)';
+      confetti.innerHTML = '';
+      hint.textContent = 'Tap Yes for a surprise ✨';
+      typeQuestion(); // restart typewriter to original question
+    }
+
+    // 8) Click handler with 7s auto-reset
+    let resetTimer = null; // track the scheduled reset so we can cancel if needed
     yesBtn.addEventListener('click', async ()=>{
       setYesUI();
       burstConfetti();
       await ding();
-      localStorage.setItem(KEY,'1');
+
+      // If a previous timer exists, cancel it and schedule a fresh 7s reset
+      if (resetTimer) clearTimeout(resetTimer);
+      resetTimer = setTimeout(()=>{
+        resetUI();
+        resetTimer = null;
+      }, 7000);
     });
   </script>
 </body>
